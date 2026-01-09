@@ -14,3 +14,112 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+// CART MODEL
+model CartItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @db.ObjectId
+
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String    @db.ObjectId
+
+  quantity    Int       @default(1)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, productId])  // One cart entry per product per user
+  @@map("cart_items")
+}
+
+
+// ORDER MODEL
+model Order {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber     String      @unique  
+
+  // Customer
+  user            User        @relation(fields: [userId], references: [id])
+  userId          String      @db.ObjectId
+
+  // Order details
+  items           OrderItem[]
+  subtotal        Float
+  tax             Float
+  shippingCost    Float
+  total           Float
+
+  // Shipping
+  shippingAddress Address
+
+  // Status tracking
+  status          OrderStatus @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   String?
+  paymentId       String?     
+
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String    @db.ObjectId
+
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String    @db.ObjectId
+
+  // Snapshot of product at time of order
+  productName String
+  price       Float
+  quantity    Int
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+
+// ADDRESS TYPE
+type Address {
+  street    String
+  city      String
+  state     String
+  zipCode   String
+  country   String
+}
+
+
+// User model should contain this please
+// - cart          CartItem[]
+// - orders        Order[]
+// - address       Address?
+
+// Product model should contain this please
+// - cartItems     CartItem[]
+// - orderItems    OrderItem[]
